@@ -1,14 +1,19 @@
 
 #include <stdio.h>
 #include "debug.h"
-
+#include "timing.h"
 #include "uthash.h"
 
 struct etdc_table {
   unsigned int symbol; //original symbol
   int freq;
 
+  #ifdef UINTWORD
+  unsigned int code; //coded symbol
+  #else
   unsigned char code[4]; //coded symbol
+  #endif
+
   int size; //size of the code
 
   UT_hash_handle hh; //hashable structure with uthash
@@ -67,7 +72,8 @@ void sort_table(struct etdc_table **table) {
   HASH_SORT(*table, freq_sort);
 }
 
-void print_table(struct etdc_table *table) {
+#ifndef UINTWORD
+void print_table_char(struct etdc_table *table) {
     struct etdc_table *s;
     int i, j;
 
@@ -82,10 +88,42 @@ void print_table(struct etdc_table *table) {
 	printf("\n");
     }
 }
+#endif
+
+#ifdef UINTWORD
+void print_table_uint(struct etdc_table *table) {
+    struct etdc_table *s;
+    int i, j;
+    unsigned char *f;
+    INFO("Printing table");
+    for(s=table, j=0; s != NULL; s=s->hh.next, j++) {
+        printf("symbol %u: freq %d\n", s->symbol, s->freq);
+
+	printf("rank: %u code: 0x%08X ", j, s->code);
+
+	f = (unsigned char *) &s->code;
+	printf(" %d %d %d %d \n", *(f), *(f+1), *(f+2), *(f+3));
+
+	//printf("\n%d %d\n", (s->code & 0xFF000000 ) >> 24, (s->code & 0x00FF0000 ) >> 16 );
+	for ( i = 0; i < s->size; i++) {
+	  printf("%d ",  (s->code & (0xFF << 8*(i)) ) >> 8*(i)  ); 
+	}
+	printf("\n");
+    }
+}
+#endif
+
+void print_table(struct etdc_table *table) {
+  #ifdef UINTWORD
+  print_table_uint(table);
+  #else
+  print_table_char(table);
+  #endif
+}
 
 
-
-void gen_codes_v1(struct etdc_table *table) {
+#ifndef UINTWORD
+void gencodes_char_lazy(struct etdc_table *table) {
   struct etdc_table *s;
   int i, x;
   for(s=table, i=0; s != NULL; s=s->hh.next, i++) {
@@ -126,7 +164,7 @@ void gen_codes_v1(struct etdc_table *table) {
   }
 }
 
-void gen_codes_v0(struct etdc_table *table) {
+void gencodes_char_paper(struct etdc_table *table) {
   struct etdc_table *s;
   int paux;
   int first;
@@ -159,15 +197,211 @@ void gen_codes_v0(struct etdc_table *table) {
   }
 
 }
+#endif
+
+
+#ifdef UINTWORD
+void gencodes_uint_lazy(struct etdc_table *table) {
+  struct etdc_table *s;
+  int i, x;
+  unsigned int c;
+
+  for(s=table, i=0; s != NULL; s=s->hh.next, i++) {
+    //printf("i: %d\n", i);
+    if ( i < 128 ) {
+      c = 128 + i % 128;
+      // c = c << 24;
+      s->code = c;
+      s->size = 1;
+    }
+    else if ( 128 <= i && i < 16512 ) {
+      c = 128 + i % 128;
+            c = c << 8;
+
+      x = i/128 - 1;
+      //c = c | ((x % 128) << 24) ;
+      c = c | ((x % 128)) ;
+ 
+      s->code = c;  
+      s->size = 2;
+    }
+    else if ( 16512 <= i && i < 2113664 ) {
+      c = 128 + i % 128;
+      c = c << 16;
+
+      x = i/128 - 1;
+      //c = c | ((x % 128) << 16);
+      c = c | ((x % 128) << 8) ;
+     
+      x = x/128 - 1;
+      //c = c | ((x % 128) << 24);
+      c = c | ((x % 128));
+      
+      s->code = c;
+      s->size = 3;
+    }
+    else if ( 2113664 <= i && i < 270549120 ) {
+      c = 128 + i % 128;
+       c = c << 24;
+
+      x = i/128 - 1;
+      
+      c = c | ((x % 128) << 16);
+      x = x/128 - 1;
+      
+      c = c | ((x % 128) << 8);
+      x = x/128 - 1;
+      
+      c = c | ((x % 128));
+
+      s->code = c;
+      s->size = 4;
+    }
+    
+  }
+}
+
+
+
+void gencodes_uint_paper(struct etdc_table *table) {
+  struct etdc_table *s;
+  int paux;
+  int first;
+  int num;
+  int p;
+  int i,k;
+
+  unsigned int c;
+
+  first = 0;
+  num = 128;
+  k = 1;
+  p = 0;
+  for(s=table; s != NULL;) {
+    paux = 0;
+
+    for(; (s != NULL) && (paux < num); s=s->hh.next) {
+      //s->code[k - 1] = 128 + paux % 128;
+      c = (128 + paux % 128) << 8*(k-1);
+      paux = paux / 128;
+
+      for( i = k -2; i >= 0; i--) {
+	//s->code[i] = paux % 128;
+	c = c | ( (paux % 128) << 8*i);
+	paux = paux / 128;
+      }
+      s->size = k;
+      s->code = c;
+
+      p++;
+      paux = p - first;
+    }
+    k++;
+    first = first + num;
+    num = num*128;
+  }
+}
+
+void gencodes_uint_farina(struct etdc_table *table) {
+  int MAX=256;
+	register unsigned int i;
+
+	register unsigned int x,y,z,t;	// codeword bytes -> [x][y][z][t]
+	unsigned int p0,p1,p2,p3;
+	unsigned int base[4];
+
+	unsigned int n;    		//codeword as a number
+	register int k;				//codeword lenght.
+
+	unsigned int v = HASH_COUNT(table);
+
+	 struct etdc_table *s = table;
+
+	p0=256*256*256;
+	p1=256*256;
+	p2=256;
+	p3=-1;   //no se usa
+
+
+	//const unsigned int TABLABASE[5] = {0,128,16512,2113664,270549120};
+
+	base[3]=128;
+	base[2]=128*128 + base[3];
+	base[1]= 128*128*128 + base[2];
+	base[0]=-1;
+
+	i=0;
+	k=1;
+
+ 	x=0; y=0; z=0;t=0;
+
+	//x=s;
+	while ( (i<v) && (x<MAX) ) {
+		//y=s;
+		while ( (i<v) && (y<MAX) ) {
+			//z=s;
+			while ( (i<v) && (z<MAX) ) {
+				//t=0;
+				n=x*p0 + y*p1 + z*p2 + t;
+				while ( (i<v) && (t<128) ) {
+				s->code=n;
+					s->size=k;
+
+					s=s->hh.next;
+
+					//fprintf(stderr,"\n word [%s], codeword [%d]",ht.hash[positionInTH[i]].word,ht.hash[positionInTH[i]].codeword);
+
+					n++;
+					i++;
+					t++;
+				}
+				if (i!=base[3]) {z++;} else{z=128;k++;}
+				t=0;
+				//z++;
+			}
+			if ( i!= base[2] ) {y++;} else {y=128;z=128;k++;}
+			z=128;
+			//y++;
+		}
+		if (i != base[1]) {x++;} else {x=128;y=128;z=128;k++;}
+		y=128;
+		//x++;
+	}
+
+
+
+}
+#endif
+
 
 void generate_codes(struct etdc_table *table) {
-  #ifdef PAPER
-  printf("Using paper algorithm\n");
-  gen_codes_v0(table);
+
+  #ifdef UINTWORD
+    #ifdef PAPER
+    printf("Using paper algorithm\n");
+    gencodes_uint_paper(table);
+    #elif defined(FARINA)
+    printf("Using farina algorithm\n");
+    gencodes_uint_farina(table);
+    #else
+    printf("Using lazy algorithm\n");
+    gencodes_uint_lazy(table);
+    #endif
   #else
-  printf("Using diego algorithm\n");
-  gen_codes_v1(table);
+
+    #ifdef PAPER
+    printf("Using paper algorithm\n");
+    gencodes_char_paper(table);
+    #else
+    printf("Using lazy algorithm\n");
+    gencodes_char_lazy(table);
+    #endif
+
   #endif
+
+
+
+ 
 }
 
 
@@ -175,29 +409,51 @@ int etdc_1stpass(struct etdc_table **table, unsigned int *input, int size) {
   int i;
 
   //adding symbols to hash table
+
+  startTimer();
   for(i = 0; i < size; i++) {
     add_symbol(table, input[i]);
   }
+  printf("add hashtable time = %lf (%ld) \n", timeFromBegin(), realTimeFromBegin());
 
   //sorting by frequency (high values first)
+
+  startTimer();
   sort_table(table);
+  printf("sorting hashtable time = %lf (%ld) \n", timeFromBegin(), realTimeFromBegin());
 
   //generate codes
+  startTimer();
   generate_codes(*table);
+  printf("generating codes time = %lf (%ld) \n", timeFromBegin(), realTimeFromBegin());
 
   return HASH_COUNT(*table);
 }
 
 int etdc_2ndpass(struct etdc_table **table, unsigned int *input, int size, unsigned char *output) {
-  int i,j,ts;
+  int i,ts;
   struct etdc_table *e;
+  int k;
 
-  j = 0;
+  unsigned char *t;
+  unsigned char *f;
+
+  t = output;
+
   for (i = 0; i < size; i++) {
     HASH_FIND_INT( *table, &input[i], e);
     
     ts = e->size;
-    memcpy(&output[j], &(e->code), ts);
+
+    #ifdef UINTWORD
+    f = (unsigned char *) &e->code;
+    #else
+    f = e->code;
+    #endif
+
+    for(k=0; k < ts; k++) {
+      *(t++) = *(f++);
+    }
 
     /*
     int t;
@@ -206,9 +462,8 @@ int etdc_2ndpass(struct etdc_table **table, unsigned int *input, int size, unsig
     printf("\n");
     */
 
-    j += ts;
   }
-  return j;
+  return (t - output);
 }
 
 void readuint(unsigned int **items, int *size) {
@@ -233,7 +488,11 @@ void readuint(unsigned int **items, int *size) {
 int main(int argc, char *argv[])
 {
   struct etdc_table *table = NULL;
-  /*
+  unsigned char *output;
+  int voc_size;
+  int newsize;
+
+  #ifdef TEST
   unsigned int items[] = {1000,1000,1000,1000,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,
       27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,
       51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,
@@ -264,27 +523,38 @@ int main(int argc, char *argv[])
       265,266,267,268,269,270,271,272,273,274,275,276,277,278,279,280,281,282,
 			283,284,285,286,287,288,289,290,291,292,293,294,295,296,297,298,299,300};
   int size = 602;
- 
-  */ 
+
+  #else
   unsigned int *items;
-  unsigned char *output;
   int size;
-  int newsize;
-
   readuint(&items, &size);
-
+  #endif
+  
   output = malloc(sizeof(unsigned int)*size);
 
-  etdc_1stpass(&table, items, size);
-  //print_table(table);
+  voc_size = etdc_1stpass(&table, items, size);
+  #ifdef TEST
+  print_table(table);
+  #endif
 
   newsize = etdc_2ndpass(&table, items, size, output);
  
-  printf("oldsize = %lu\nnewsize = %u\n", size*sizeof(unsigned int), newsize);
+  printf("oldsize = %lu\nnewsize = %d + %lu = %lu\n", 
+	 size*sizeof(unsigned int), newsize, 
+	 sizeof(unsigned int)*voc_size,
+	 newsize+sizeof(unsigned int)*voc_size);
+
   printf("Deleting table\n");
   delete_table(&table);
   print_table(table);
   
+  #ifdef TEST
+  int i;
+  for(i=0; i<newsize;i++) {
+    printf("%d ", output[i]);
+  }
+  #endif
+
   printf("END\n");
   return 0;
 }
