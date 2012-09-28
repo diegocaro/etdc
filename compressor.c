@@ -484,6 +484,28 @@ void readuint(unsigned int **items, int *size) {
   *items = p;
 }
 
+void etdc_writefile(char *filename, struct etdc_table *table, unsigned char *output, int newsize, int vocsize, int realsize) {
+  FILE *f;
+  struct etdc_table *s;
+
+  char vocfile[255];
+  sprintf(vocfile, "%s.voc", filename);
+
+  f = fopen(filename, "wb");
+  fwrite(&realsize, sizeof(unsigned int), 1, f);
+  fwrite(&newsize, sizeof(unsigned int), 1, f);
+  fwrite(output, sizeof(unsigned char), newsize, f);
+  fclose(f);
+
+  f = fopen(vocfile, "wb");
+  fwrite(&vocsize, sizeof(unsigned int), 1, f);
+  for(s=table; s != NULL; s=s->hh.next) {
+    fwrite(&s->symbol, sizeof(unsigned int), 1, f);
+  }
+  fclose(f);
+}
+
+
 
 int main(int argc, char *argv[])
 {
@@ -507,7 +529,8 @@ int main(int argc, char *argv[])
       229,230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246,
       247,248,249,250,251,252,253,254,255,256,257,258,259,260,261,262,263,264,
       265,266,267,268,269,270,271,272,273,274,275,276,277,278,279,280,281,282,
-			  283,284,285,286,287,288,289,290,291,292,293,294,295,296,297,298,299,300,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,
+      283,284,285,286,287,288,289,290,291,292,293,294,295,296,297,298,299,300,
+      0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,
       27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,
       51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,
       75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,
@@ -521,7 +544,7 @@ int main(int argc, char *argv[])
       229,230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246,
       247,248,249,250,251,252,253,254,255,256,257,258,259,260,261,262,263,264,
       265,266,267,268,269,270,271,272,273,274,275,276,277,278,279,280,281,282,
-			283,284,285,286,287,288,289,290,291,292,293,294,295,296,297,298,299,300};
+      283,284,285,286,287,288,289,290,291,292,293,294,295,296,297,298,299,300};
   int size = 602;
 
   #else
@@ -539,6 +562,10 @@ int main(int argc, char *argv[])
 
   newsize = etdc_2ndpass(&table, items, size, output);
  
+  #ifndef TEST
+  etdc_writefile(argv[1], table, output, newsize, voc_size, size);
+  #endif
+  
   printf("oldsize = %lu\nnewsize = %d + %lu = %lu\n", 
 	 size*sizeof(unsigned int), newsize, 
 	 sizeof(unsigned int)*voc_size,
@@ -554,6 +581,8 @@ int main(int argc, char *argv[])
     printf("%d ", output[i]);
   }
   #endif
+
+  free(output);
 
   printf("END\n");
   return 0;
