@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "timing.h"
 
-int etdc_decode_paper(unsigned int *table, unsigned int voc_size, unsigned char *input, unsigned int size, unsigned int *output, unsigned int realsize) {
+#ifdef PAPER
+int etdc_decode(unsigned int *table, unsigned int voc_size, unsigned char *input, unsigned int size, unsigned int *output, unsigned int realsize) {
   unsigned char *max;
   unsigned int c;
 
@@ -10,6 +12,7 @@ int etdc_decode_paper(unsigned int *table, unsigned int voc_size, unsigned char 
 
   unsigned char *p;
   unsigned int *o;
+  printf("decode paper\n");
 
   p = input;
   o = output;
@@ -46,7 +49,47 @@ int etdc_decode_paper(unsigned int *table, unsigned int voc_size, unsigned char 
   return realsize;
 }
 
+#elif defined(SLOW)
 
+int etdc_decode(unsigned int *table, unsigned int voc_size, unsigned char *input, unsigned int size, unsigned int *output, unsigned int realsize) {
+  unsigned char *max;
+  unsigned int c, t;
+
+  unsigned char *p;
+  unsigned int *o;
+  printf("decode faster \n");
+  p = input;
+  o = output;
+
+  max = input + size;
+
+  c = 0;
+  while(p < max) {
+    //printf("reading 0x%02x\n", *p);
+    t = c;
+    c = (c+1)*128 + *p;    
+    //printf("c: %08x\nt: %08x\n", c, t);
+    if (*p >= 128) {
+      //printf("%d %d %d\n", c*128, *p, base);
+
+      c = c - (t+1)*128 + t - 128;
+      //c = c - 127*t - 256;
+
+      //printf("c: %u\n", c);
+      if (c >= voc_size) {printf("error fatal, codigo excede tamaño vocabulario\n"); exit(1);}
+      *(o++) = table[c];
+      //printf("table[%u] = %u\n", c, table[c]);
+      c = 0;
+    }
+    p++;
+  }
+
+
+  return realsize;
+}
+
+
+#else
 
 int etdc_decode(unsigned int *table, unsigned int voc_size, unsigned char *input, unsigned int size, unsigned int *output, unsigned int realsize) {
   unsigned char *max;
@@ -54,7 +97,7 @@ int etdc_decode(unsigned int *table, unsigned int voc_size, unsigned char *input
 
   unsigned char *p;
   unsigned int *o;
-
+  printf("decode diego \n");
   p = input;
   o = output;
 
@@ -82,6 +125,7 @@ int etdc_decode(unsigned int *table, unsigned int voc_size, unsigned char *input
 
   return realsize;
 }
+#endif 
 
 unsigned int etdc_openfile(char *filename, unsigned int **table, unsigned int *voc_size, unsigned char **coded, unsigned int *size) {
   FILE *f;
@@ -130,11 +174,14 @@ int main( int argc, char *argv[]) {
   uncompressed = malloc( sizeof(unsigned int) * realsize);
   /*
   realsize = 1;
-  size = 2;
+  size = 3;
   coded[0] = 0x00;
-  coded[1] = 0xFF;
+  coded[1] = 0x00;
+  coded[2] = 0x80;
   */
+  startTimer();
   etdc_decode(table, voc_size, coded, size, uncompressed, realsize);
+  printf("decoding = %lf (%ld) \n", timeFromBegin(), realTimeFromBegin());
 
   free(table);
   free(coded);
