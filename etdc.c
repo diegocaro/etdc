@@ -8,8 +8,6 @@
 #include "uthash.h"
 #include "etdc.h"
 
-#include "debug.h"
-
 int etdc_encode(struct etdc_table **table, unsigned int *input, int size, unsigned char *output) {
   int i,ts;
   struct etdc_table *e;
@@ -90,7 +88,7 @@ void etdc_new_symbol( struct etdc_table **table, unsigned int s) {
   e->symbol = s;
   e->freq = 1;
 
-  INFO("Adding new symbol to etdc table");
+  fprintf(stderr, "Adding new symbol to etdc table");
   HASH_ADD_INT(*table, symbol, e);
 }
 
@@ -101,11 +99,11 @@ void etdc_add(struct etdc_table **table, unsigned int s) {
 
   if (NULL == e) {
     //add symbol to table
-    INFO("No symbol found in table... creating one");
+    //fprintf(stderr,"No symbol found in table... creating one");
     etdc_new_symbol(table, s);
   } else {
     //increment frequency
-    INFO("Incrementing frequency of symbol in etdc table");
+    //fprintf(stderr,"Incrementing frequency of symbol in etdc table");
     e->freq++;
   }
 }
@@ -130,7 +128,7 @@ void etdc_print(struct etdc_table *table) {
     struct etdc_table *s;
     int i, j;
 
-    INFO("Printing table");
+    fprintf(stderr, "Printing table");
     for(s=table, j=0; s != NULL; s=s->hh.next, j++) {
         printf("symbol %u: freq %d\n", s->symbol, s->freq);
 
