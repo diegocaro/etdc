@@ -414,18 +414,18 @@ int etdc_1stpass(struct etdc_table **table, unsigned int *input, int size) {
   for(i = 0; i < size; i++) {
     add_symbol(table, input[i]);
   }
-  printf("add hashtable time = %lf (%ld) \n", timeFromBegin(), realTimeFromBegin());
+  //printf("add hashtable time = %lf (%ld) \n", timeFromBegin(), realTimeFromBegin());
 
   //sorting by frequency (high values first)
 
   startTimer();
   sort_table(table);
-  printf("sorting hashtable time = %lf (%ld) \n", timeFromBegin(), realTimeFromBegin());
+  //printf("sorting hashtable time = %lf (%ld) \n", timeFromBegin(), realTimeFromBegin());
 
   //generate codes
   startTimer();
   generate_codes(*table);
-  printf("generating codes time = %lf (%ld) \n", timeFromBegin(), realTimeFromBegin());
+  printf("generating = %lf (%ld) \n", timeFromBegin(), realTimeFromBegin());
 
   return HASH_COUNT(*table);
 }
@@ -483,6 +483,7 @@ void readuint(unsigned int **items, int *size) {
 
   *items = p;
 }
+
 
 void etdc_writefile(char *filename, struct etdc_table *table, unsigned char *output, int newsize, int vocsize, int realsize) {
   FILE *f;
@@ -560,9 +561,11 @@ int main(int argc, char *argv[])
   print_table(table);
   #endif
 
+  startTimer();
   newsize = etdc_2ndpass(&table, items, size, output);
- 
-  #ifndef TEST
+  printf("encoding = %lf (%ld) \n", timeFromBegin(), realTimeFromBegin());
+
+  #ifndef BENCHMARK
   etdc_writefile(argv[1], table, output, newsize, voc_size, size);
   #endif
   
