@@ -5,7 +5,7 @@ struct etdc_table {
   unsigned int symbol; //original symbol
   int freq;
 
-  unsigned char code[4]; //coded symbol
+  unsigned char code[5]; //coded symbol
 
   int size; //size of the code
 
@@ -27,5 +27,7 @@ void etdc_print(struct etdc_table *table);
 void etdc_free(struct etdc_table **table);
 
 void etdc_gencodes(struct etdc_table *table);
+
+void etdc_voc2uint(struct etdc_table *table, unsigned int *voc);
 
 #endif

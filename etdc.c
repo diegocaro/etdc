@@ -20,19 +20,16 @@ int etdc_encode(struct etdc_table **table, unsigned int *input, int size, unsign
 
   for (i = 0; i < size; i++) {
     HASH_FIND_INT( *table, &input[i], e);
-    
+    //printf("encoding i: %d -> %u -> ", i ,input[i]);
     ts = e->size;
 
-    #ifdef UINTWORD
     f = (unsigned char *) &e->code;
-    #else
-    f = e->code;
-    #endif
 
     for(k=0; k < ts; k++) {
+      //printf("%u ", *f);
       *(t++) = *(f++);
     }
-
+    //printf("\n");
     /*
     int t;
     printf("%u ->", input[i]);
@@ -58,18 +55,20 @@ int etdc_decode(unsigned int *table, unsigned int voc_size, unsigned char *input
 
   c = 0;
   while(p < max) {
-    //printf("reading 0x%02x\n", *p);
+    //printf("reading 0x%02x %u\n", *p, *p);
     if ( *p < 128) {
-      c = (c+1)*128 + *p;    
+      c = (c+*p+1)*128;
     }
     else {
       //printf("%d %d %d\n", c*128, *p, base);
       c = c + *p - 128 ;
 
       //printf("c: %u\n", c);
-      if (c >= voc_size) {printf("error fatal, codigo excede tamaño vocabulario\n"); exit(1);}
-      *(o++) = table[c];
       //printf("table[%u] = %u\n", c, table[c]);
+      if (c >= voc_size) {printf("error fatal, codigo excede tamaño vocabulario\n"); exit(1);}
+
+      *(o++) = table[c];
+      //printf("%d: table[%u] = %u\n", o-output-1, c, table[c]);
       c = 0;
     }
     p++;
@@ -88,7 +87,7 @@ void etdc_new_symbol( struct etdc_table **table, unsigned int s) {
   e->symbol = s;
   e->freq = 1;
 
-  fprintf(stderr, "Adding new symbol to etdc table");
+  //fprintf(stderr, "Adding new symbol to etdc table");
   HASH_ADD_INT(*table, symbol, e);
 }
 
@@ -154,6 +153,7 @@ void etdc_free(struct etdc_table **table) {
     free(curr);            /* optional- if you want to free  */
   }
 
+  *table = NULL;
 }
 
 
@@ -189,4 +189,12 @@ void etdc_gencodes(struct etdc_table *table) {
     num = num*128;
   }
 
+}
+
+
+void etdc_voc2uint(struct etdc_table *table, unsigned int *voc) {
+  struct etdc_table *s;
+  for(s=table; s != NULL; s=s->hh.next) {
+    *(voc++) = s->symbol;
+  }
 }
