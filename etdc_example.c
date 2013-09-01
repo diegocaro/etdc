@@ -14,7 +14,7 @@ void readuint(unsigned int **items, int *size) {
 
   *size = n;
 
-  p = malloc(sizeof(unsigned int)*n);
+  p = (unsigned int *)malloc(sizeof(unsigned int)*n);
 
   for (i = 0; i < n; i++) {
     scanf("%u", &p[i]);
@@ -64,7 +64,7 @@ void writefile(char *filename, struct etdc_table *table, unsigned char *output, 
 
   f = fopen(vocfile, "wb");
   fwrite(&vocsize, sizeof(unsigned int), 1, f);
-  for(s=table; s != NULL; s=s->hh.next) {
+  for(s=(struct etdc_table*)table; s != (struct etdc_table*)NULL; s=(struct etdc_table*)s->hh.next) {
     fwrite(&s->symbol, sizeof(unsigned int), 1, f);
   }
   fclose(f);
@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
   readuint(&items, &size);
   #endif
   
-  output = malloc(sizeof(unsigned int)*size);
+  output = (unsigned char *)malloc(sizeof(unsigned int)*size);
 
   voc_size = firstpass(&table, items, size);
   #ifndef BENCHMARK

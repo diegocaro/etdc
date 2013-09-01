@@ -128,7 +128,7 @@ void etdc_print(struct etdc_table *table) {
     int i, j;
 
     fprintf(stderr, "Printing table");
-    for(s=table, j=0; s != NULL; s=s->hh.next, j++) {
+    for(s=(struct etdc_table*)table, j=0; s != (struct etdc_table*)NULL; s=(struct etdc_table*)s->hh.next, j++) {
         printf("symbol %u: freq %d\n", s->symbol, s->freq);
 
 	printf("rank: %u code: ", j);
@@ -171,7 +171,7 @@ void etdc_gencodes(struct etdc_table *table) {
   for(s=table; s != NULL;) {
     paux = 0;
 
-    for(; (s != NULL) && (paux < num); s=s->hh.next) {
+    for(; (s != (struct etdc_table*)NULL) && (paux < num); s=(struct etdc_table*)s->hh.next) {
       s->code[k - 1] = 128 + paux % 128;
       paux = paux / 128;
 
@@ -194,7 +194,7 @@ void etdc_gencodes(struct etdc_table *table) {
 
 void etdc_voc2uint(struct etdc_table *table, unsigned int *voc) {
   struct etdc_table *s;
-  for(s=table; s != NULL; s=s->hh.next) {
+  for(s=(struct etdc_table*)table; s != (struct etdc_table*)NULL; s=(struct etdc_table*)s->hh.next) {
     *(voc++) = s->symbol;
   }
 }

@@ -13,7 +13,7 @@ void readraw(char *filename, unsigned int **output, int *size) {
   *size = ftell(f)/sizeof(unsigned int)+1;
   printf("filesize: %d\n", *size * 4);
   printf("count items: %d\n", *size);
-  *output = malloc(*size * sizeof(unsigned int));
+  *output = (unsigned int*)malloc(*size * sizeof(unsigned int));
   
   fseek( f, 0, SEEK_SET);
   
@@ -64,7 +64,7 @@ void writefile(char *filename, struct etdc_table *table, unsigned char *output, 
 
   f = fopen(vocfile, "wb");
   fwrite(&vocsize, sizeof(unsigned int), 1, f);
-  for(s=table; s != NULL; s=s->hh.next) {
+  for(s=(struct etdc_table*)table; s != (struct etdc_table*)NULL; s=(struct etdc_table*)s->hh.next) {
     fwrite(&s->symbol, sizeof(unsigned int), 1, f);
   }
   fclose(f);
@@ -79,7 +79,7 @@ void readvocfile(char *filename, unsigned int **table, unsigned int *voc_size) {
   f = fopen(vocfile, "rb");
   fread(voc_size, sizeof(unsigned int), 1, f);
 
-  *table = malloc(sizeof(unsigned int)*(*voc_size));
+  *table = (unsigned int*)malloc(sizeof(unsigned int)*(*voc_size));
   fread(*table, sizeof(unsigned int), *voc_size, f);
 
   fclose(f);
@@ -95,7 +95,7 @@ void decompress_file(char *filein, char *fileout, unsigned int *items, unsigned 
   unsigned char *compressed;
   unsigned int *raw;
 
-  FILE *f, *g;
+  FILE *f;
 
   readvocfile(filein, &table, &vocsize);
   printf("vocsize: %d\n", vocsize);
@@ -103,12 +103,12 @@ void decompress_file(char *filein, char *fileout, unsigned int *items, unsigned 
   f = fopen(filein, "rb");
   fread(&real_size, sizeof(unsigned int), 1, f);
   fread(&old_size, sizeof(unsigned int), 1, f);
-  compressed = malloc(sizeof(unsigned char)*old_size);
+  compressed = (unsigned char *) malloc(sizeof(unsigned char)*old_size);
   fread(compressed, sizeof(unsigned char), old_size, f);
   fclose(f);
 
 
-  raw = malloc(sizeof(unsigned int) * real_size);
+  raw = (unsigned int*) malloc(sizeof(unsigned int) * real_size);
   etdc_decode(table, vocsize,compressed,old_size,raw,real_size);
 
   //g = fopen(fileout, "wb");
@@ -116,7 +116,7 @@ void decompress_file(char *filein, char *fileout, unsigned int *items, unsigned 
   //fclose(g);
 
 
-  int i;
+  unsigned int i;
   for(i=0; i < vocsize; i++) {
     printf("rank %d symbol %u\n", i, table[i]);
   }
@@ -125,7 +125,7 @@ void decompress_file(char *filein, char *fileout, unsigned int *items, unsigned 
   printf("compressed size: %d\n",old_size);
   for( i = 0; i < real_size; i++) {
     if (raw[i] != items[i])
-        printf("diff %d %u-%u %c\n", i, raw[i], items[i]);
+        printf("diff %d %u-%u\n", i, raw[i], items[i]);
   }
 
 }
@@ -137,13 +137,13 @@ int main(int argc, char *argv[])
   int voc_size;
   int newsize;
 
-  unsigned int *voc;
+  //unsigned int *voc;
 
   unsigned int *items;
   int size;
   readraw(argv[1], &items, &size);
 
-  output = malloc(sizeof(unsigned char)*size*5);
+  output = (unsigned char*)malloc(sizeof(unsigned char)*size*5);
 
   voc_size = firstpass(&table, items, size);
 
