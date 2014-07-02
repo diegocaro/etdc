@@ -1,5 +1,3 @@
-
-CC=gcc
 CFLAGS=-c -Wall -O9
 LDFLAGS=-Wall -O9
 

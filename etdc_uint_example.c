@@ -95,7 +95,7 @@ void decompress_file(char *filein, char *fileout, unsigned int *items, unsigned 
   unsigned char *compressed;
   unsigned int *raw;
 
-  FILE *f, *g;
+  FILE *f;
 
   readvocfile(filein, &table, &vocsize);
   printf("vocsize: %d\n", vocsize);
@@ -125,7 +125,7 @@ void decompress_file(char *filein, char *fileout, unsigned int *items, unsigned 
   printf("compressed size: %d\n",old_size);
   for( i = 0; i < real_size; i++) {
     if (raw[i] != items[i])
-        printf("diff %d %u-%u %c\n", i, raw[i], items[i]);
+        printf("diff %d %u-%u\n", i, raw[i], items[i]);
   }
 
 }
@@ -137,7 +137,7 @@ int main(int argc, char *argv[])
   int voc_size;
   int newsize;
 
-  unsigned int *voc;
+  //unsigned int *voc;
 
   unsigned int *items;
   int size;
