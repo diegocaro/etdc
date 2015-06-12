@@ -1,4 +1,3 @@
-
 #CC=g++
 CFLAGS=-c -Wall -O3
 CFLAGSDEBUG=-c -g -Wall -O0
