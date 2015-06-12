@@ -1,5 +1,11 @@
 #ifndef __ETDC_H__
 #define __ETDC_H__
+
+/* Header file foo.h */
+#ifdef __cplusplus /* If this is a C++ compiler, use C linkage */
+extern "C" {
+#endif
+
 #include "uthash.h"
 struct etdc_table {
   unsigned int symbol; //original symbol
@@ -29,5 +35,9 @@ void etdc_free(struct etdc_table **table);
 void etdc_gencodes(struct etdc_table *table);
 
 void etdc_voc2uint(struct etdc_table *table, unsigned int *voc);
+
+#ifdef __cplusplus /* If this is a C++ compiler, end C linkage */
+}
+#endif
 
 #endif
